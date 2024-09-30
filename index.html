@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head prefix="foaf: http://xmlns.com/foaf/0.1/">
+    <title>Web Querying</title>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="shower/themes/material/styles/styles.css">
+    <link rel="stylesheet" href="styles/rt-custom.css" />
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css' />
+    <link href='https://fonts.googleapis.com/css?family=Droid+Sans' rel='stylesheet' type='text/css' />
+    
+    <link rel="foaf:maker" href="https://www.rubensworks.net/#me" />
+
+    <style>
+      .shower {
+        --slide-ratio: calc(16 / 9);
+      }
+    </style>
+  </head>
+
+  <body class="shower list" prefix="rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns# foaf: http://xmlns.com/foaf/0.1/ owl: http://www.w3.org/2002/07/owl# xsd: http://www.w3.org/2001/XMLSchema# org: http://www.w3.org/ns/org# schema: http://schema.org/ cite: http://purl.org/spar/cito/" typeof="schema:PresentationDigitalDocument">
+    <header class="caption">
+      <div class="title">
+        <h1 property="schema:name">Web Querying</h1>
+      </div>
+      <div class="captiondata">
+        <p class="author" rel="schema:author"><a href="https://www.rubensworks.net/#me">Ruben Taelman</a></p>
+        <p class="venue">
+          <a href="https://www.ugain.ugent.be/LDS2024.htm">VAIA course Linked Data &amp; Solid</a>, <span rel="schema:datePublished">24 October 2024</span></a>
+        </p>
+      </div>
+    </header>
+
+    <section id="title" class="slide title" inlist="" rel="schema:hasPart" resource="#title">
+      <h2 property="schema:name">Web Querying</h2>
+      <ul class="author inline">
+          <li class="current"><a href="https://www.rubensworks.net/">Ruben Taelman</a></li>
+      </ul>
+      <p class="affiliation"><a href="http://idlab.technology/">Ghent University – imec – IDLab, Belgium</a></p>
+    </section>
+
+    <section id="start" class="slide" style="background-image: url('img/diamond.jpg')" inlist="" rel="schema:hasPart" resource="#start">
+        <h2 property="schema:name" class="big" style="margin-top: 20px; color: white; text-shadow: 2px 2px black">Linked Data on the Web is multifaceted</h2>
+        <ul style="color: white; text-shadow: 2px 2px black; font-size: 1.3em">
+            <li>RDF Serializations</li>
+            <li>Publication APIs</li>
+            <li>Access patterns</li>
+            <li>Query languages</li>
+            <li>...</li>
+        </ul>
+    </section>
+    
+    <section id="complexity-devs" class="slide" inlist="" rel="schema:hasPart" resource="#complexity-devs">
+        <h2 property="schema:name" class="big" style="margin-top: 20px">Difficulties for app developers</h2>
+        <ul>
+            <li>
+              <h3>Distinguishing APIs</h3>
+  			  <span class="indent" style="font-style:italic">What kind of API is this?</span>
+            </li>
+            <li>
+              <h3>Interacting with APIs</h3>
+  			  <span class="indent" style="font-style:italic">How to efficiently get data from this API?</span>
+            </li>
+            <li>
+              <h3>Combining APIs</h3>
+  			  <span class="indent" style="font-style:italic">How to combine data across different APIs?</span>
+            </li>
+        </ul>
+    </section>
+    
+    <section id="connection-point" class="slide" inlist="" rel="schema:hasPart" resource="#connection-point">
+        <h2 property="schema:name" class="big" style="margin-top: 20px">Query Engines abstract access</h2>
+        <h3>Hide the complexities of reading and writing for app developers</h3>
+        <center>
+            <img src="img/computer.png" alt="Application" width="150px" style="margin-right: 20px" />
+            <span style="font-size: 6em; vertical-align: baseline; position: relative; top: -40px">&harr;</span>
+            <img src="img/gears.png" alt="Query Engine" width="170px" />
+            <span style="font-size: 6em; vertical-align: baseline; position: relative; top: -40px">&harr;</span>
+            <img src="img/globe.png" alt="Globe" width="150px" style="margin-left: 20px" />
+        </center>
+        <p style="text-align: right; font-style: italic"><a href="https://www.flaticon.com/free-icons/application" title="application icons">Image credit</a></p>
+    </section>
+	
+    <section id="index" class="slide index" inlist="" rel="schema:hasPart" resource="#index">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="index-fundamentals" class="slide index" inlist="" rel="schema:hasPart" resource="#index-fundamentals">
+      <ul>
+        <li class="current"><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+        <li>
+            <ul>
+                <li class="current"><a href="#index-fundamentals">SPARQL</a></li>
+                <li><a href="#index-fundamentals-processing">Query Processing</a></li>
+            </ul>
+        </li>
+		<li><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="query-abstraction" class="slide" inlist="" rel="schema:hasPart" resource="#query-abstraction">
+      <h2 property="schema:name">Queries as abstraction layer</h2>
+      <em>SQL, SPARQL, GraphQL, ...</em>
+      <ul>
+          <li>
+          	  <h3>Say what needs to happen, not how</h3>
+			  <span class="indent">Declarative queries hide complexities of data retrieval</span>
+          </li>
+          <li>
+          	  <h3>Queries are reusable</h3>
+			  <span class="indent">Queries are not API-specific</span>
+          </li>
+          <li>
+          	  <h3>Execution via a generic, reusable <em>query engine</em></h3>
+			  <span class="indent">Abstracts away complexities for executing queries</span><br \>
+              <span class="indent">New optimisations can be used by merely updating query engine</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="sparql-big" class="slide" inlist="" rel="schema:hasPart" resource="#sparql-big">
+     <center><img src="img/sparql.svg" style="width: 350px; margin-top: 80px" \></center>
+    </section>
+	
+    <section id="sparql" class="slide" inlist="" rel="schema:hasPart" resource="#sparql">
+      <h2 property="schema:name" style="font-size: 1.8em">SPARQL Protocol and RDF Query Language</h2>
+      <ul>
+          <li>
+          	  <h3>The specification describes a <em>protocol</em> and a <em>query language</em></h3>
+			  <span class="indent">Focus in this presentation is on the SPARQL query language</span><br \>
+              <span class="indent">Declarative language for querying RDF graphs</span>
+          </li>
+          <li>
+          	  <h3>W3C recommendation</h3>
+			  <span class="indent">SPARQL 1.1 (21 March 2013)</span><br \>
+              <span class="indent">SPARQL 1.2 (Upcoming mid-2024)</span>
+          </li>
+          <li>
+          	  <h3>Widely adopted</h3>
+			  <span class="indent">Virtuoso (commercial)</span><br \>
+              <span class="indent">Apache Jena (open-source)</span><br \>
+              <span class="indent">Amazon Neptune (commercial)</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="sparql-forms" class="slide" inlist="" rel="schema:hasPart" resource="#sparql-forms">
+        <h2 property="schema:name">Different query forms in SPARQL</h2>
+        <ul>
+            <li><code>SELECT</code>: selecting values in tabular form</li>
+            <li><code>CONSTRUCT</code>: construct new triples</li>
+            <li><code>ASK</code>: check if data exists</li>
+            <li><code>DESCRIBE</code>: describe a given resource</li>
+            <li><code>INSERT</code>: insert new triples</li>
+            <li><code>DELETE</code>: delete existing triples</li>
+        </ul>
+    </section>
+    
+    <section id="example" class="slide" inlist="" rel="schema:hasPart" resource="#example" style="font-size: 0.9em">
+        <h2 property="schema:name">Find all artists born in York</h2>
+        <ul>
+            <li><pre>SELECT ?name ?deathDate WHERE {
+  ?person a dbpedia-owl:Artist;
+          rdfs:label ?name;
+          dbpedia-owl:birthPlace [ rdfs:label "York"@en ].
+  FILTER LANGMATCHES(LANG(?name),  "EN")
+  OPTIONAL { ?person dbpprop:dateOfDeath ?deathDate. }
+}
+</pre></li>
+        </ul>
+        <table class="next query-results">
+            <thead>
+                <tr><td>name</td><td>deathDate</td></tr>
+            </thead>
+            <tbody>
+                <tr><td>Albert Joseph Moore</td><td></td></tr>
+                <tr><td>Charles Francis Hansom</td><td>1888</td></tr>
+                <tr><td>David Reed (comedian)</td><td></td></tr>
+                <tr><td>Dustin Gee</td><td></td></tr>
+                <tr><td>E Ridsdale Tate</td><td>1922</td></tr>
+            </tbody>
+        </table>
+    </section>
+    
+    <section id="how1" class="slide" inlist="" rel="schema:hasPart" resource="#how1">
+        <h2 property="schema:name" class="big">How do query engines process a query?</h2>
+        <p style="text-align: center; font-size: 1.3em" class="next">
+            RDF dataset + SPARQL query <br/>
+            &darr;<br />
+            <strong>...</strong><br />
+            &darr;<br/>
+            query results
+        </p>
+    </section>
+    
+    <section id="how2" class="slide" inlist="" rel="schema:hasPart" resource="#how2">
+        <h2 property="schema:name" class="big">How do query engines process a query?</h2>
+        <p style="text-align: center; font-size: 1.3em">
+            RDF dataset + SPARQL query <br/>
+            &darr;<br />
+            <strong>SPARQL query processing</strong><br />
+            &darr;<br/>
+            query results
+        </p>
+    </section>
+    
+    <section id="index-fundamentals-processing" class="slide index" inlist="" rel="schema:hasPart" resource="#index-fundamentals-processing">
+      <ul>
+        <li class="current"><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+        <li>
+            <ul>
+                <li><a href="#index-fundamentals">SPARQL</a></li>
+                <li class="current"><a href="#index-fundamentals-processing">Query Processing</a></li>
+            </ul>
+        </li>
+		<li><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+        <section id="basics-restrict" class="slide" inlist="" rel="schema:hasPart" resource="#basics-restrict" style="font-size: 0.95em">
+          <h2 property="schema:name">Basic Graph Patterns enable graph pattern matching</h2>
+          <ul>
+              <li>
+              	  <h3>Basic Graph Pattern (BGP)</h3>
+    			  <span class="indent">A collection of <em>triple patterns</em>.</span>
+              </li>
+              <li>
+    <pre style="font-size: 0.8em">    ?person a dbpedia-owl:Artist.
+    ?person rdfs:label ?name.
+    ?person dbpedia-owl:birthPlace ?birthPlace.
+    </pre></li>
+          <li>
+          	  <h3>Triple Pattern</h3>
+			  <span class="indent">A triple in which any component may be a variable.</span><br />
+			  <span class="indent">Variables start with <code>?</code>, followed by a <em>label</em>. (e.g. <code>?name</code>)</span>
+          </li>
+          <li>
+          	  <h3>More complex operators are possible</h3>
+    		  <span class="indent"><code>OPTIONAL</code>, <code>UNION</code>, <code>FILTER</code>, ...</span>
+          </li>
+      </ul>
+    </section>
+
+    <section id="basics-solutions" class="slide" inlist="" rel="schema:hasPart" resource="#basics-solutions">
+      <h2 property="schema:name">Query results representation</h2>
+      <ul>
+          <li>
+          	  <h3>Solution Mapping</h3>
+			  <span class="indent">Mapping from a set of variable labels to a set of RDF terms.</span>
+          </li>
+          <li>
+          	  <h3>Solution Sequence</h3>
+			  <span class="indent">A list of solution mappings.</span>
+          </li>
+      </ul>
+      <em>1 solution sequence with 3 solution mappings:</em>
+      <table class="query-results">
+          <thead>
+              <tr><td>name</td><td>birthplace</td></tr>
+          </thead>
+          <tbody>
+              <tr><td>Bob Brockmann</td><td>http://dbpedia.org/resource/Louisiana</td></tr>
+              <tr><td>Bennie Nawahi</td><td>http://dbpedia.org/resource/Honolulu</td></tr>
+              <tr><td>Weird Al Yankovic</td><td>http://dbpedia.org/resource/Downey,_California</td></tr>
+          </tbody>
+      </table>
+    </section>
+
+    <section id="basics-steps" class="slide" inlist="" rel="schema:hasPart" resource="#basics-steps">
+      <h2 property="schema:name">Steps in SPARQL query processing</h2>
+      <ul>
+          <li>
+          	  <h3>1. Parsing</h3>
+			  <span class="indent">Transform a SPARQL query string into an algebra expression</span>
+          </li>
+          <li>
+          	  <h3>2. Optimization</h3>
+			  <span class="indent">Transform algebra expression into a query plan</span>
+          </li>
+          <li>
+          	  <h3>3. Evaluation</h3>
+			  <span class="indent">Executes query plan to obtain query results</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="parsing-ast" class="slide" inlist="" rel="schema:hasPart" resource="#parsing-ast">
+      <h2 property="schema:name">1. Parsing: Transform query string into SPARQL Algebra</h2>
+      <ul>
+          <li>
+          	  <h3>SPARQL Algebra = Abstract Syntax Tree (AST)</h3>
+			  <span class="indent">Algebraic <strong>datastructure</strong> that represents the query structure</span><br /><br />
+              <span class="indent">Tree where each node is a separate <strong>operator</strong>: join, BGP, filter, ...</span><br /><br />
+              <span class="indent"><strong>Easier</strong> for engines to work with than strings</span><br /><br />
+              <span class="indent">Enables algebraic query <strong>optimizations</strong></span><br /><br />
+              <span class="indent">A.k.a <em>query plan</em> &rarr; basis for <strong>query planning</strong></span><br /><br />
+          </li>
+      </ul>
+    </section>
+    
+    <section id="parsing-ast-example" class="slide" inlist="" rel="schema:hasPart" resource="#parsing-ast-example">
+      <h2 property="schema:name">1. Parsing: SPARQL Algebra example</h2>
+      <div style="float:left; width: 400px; height: 500px">
+        Input: <pre style="font-size: 0.5em">SELECT ?x ?y ?z WHERE {
+  ?x ?y ?z
+}</pre>
+      </div>
+      <div>
+        Output: <pre style="font-size: 0.5em">{
+  "type": "project",
+  "input": {
+    "type": "bgp",
+    "patterns": [
+      {
+        "type": "pattern",
+        "subject": {
+          "termType": "Variable",
+          "value": "x"
+        },
+        "predicate": {
+          "termType": "Variable",
+          "value": "y"
+        },
+        "object": {
+          "termType": "Variable",
+          "value": "z"
+        }
+      }
+    ]
+  },
+  "variables": [
+    { "termType": "Variable",
+      "value": "x" },
+    { "termType": "Variable",
+      "value": "y" },
+    { "termType": "Variable",
+      "value": "z" }
+  ]
+}</pre>
+      </div>
+    </section>
+    
+    <section id="optimization-types" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-types">
+      <h2 property="schema:name">2. Optimization: Why do we need it?</h2>
+      <ul>
+          <li>
+          	  <h3>Queries are declarative</h3>
+			  <span class="indent">They say <em>what</em> needs to be done, not <em>how</em>.</span><br /><br />
+              <span class="indent">Transformation into executable code can happen in many different ways.</span>
+          </li>
+          <li>
+          	  <h3>Factors that influence performance</h3>
+              <span class="indent">Dataset</span><br /><br />
+              <span class="indent">Available data indexes</span><br /><br />
+			  <span class="indent">Order of operators in AST</span><br /><br />
+              <span class="indent">Available operator algorithm implementations</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="optimization-types" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-types">
+      <h2 property="schema:name">2. Optimization: Different levels</h2>
+      <ul>
+          <li>
+          	  <h3>Algebraic optimization</h3>
+			  <span class="indent">Independent of underlying data</span><br /><br />
+              <span class="indent">Based on formally provable equivalence of operations</span>
+          </li>
+          <li>
+          	  <h3>Low-level optimization</h3>
+			  <span class="indent">Based on the underlying data</span><br /><br />
+              <span class="indent">Select and configure specific algorithms of algebra operators</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="evaluation-steps" class="slide" inlist="" rel="schema:hasPart" resource="#evaluation-steps">
+      <h2 property="schema:name">3. Evaluation: executing the plan</h2>
+      <ul>
+          <li>
+          	  <h3>Bottom-up</h3>
+			  <span class="indent">Start with leaves in query plan, and work up to the root.</span>
+          </li>
+          <li>
+          	  <h3>Parallelisation</h3>
+			  <span class="indent">Evaluate independent branches in parallel on different threads.</span>
+          </li>
+          <li>
+          	  <h3>Pipelining</h3>
+			  <span class="indent">Reduce time to first result by streaming intermediary results.</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="index-multiplesources" class="slide index" inlist="" rel="schema:hasPart" resource="#index-multiplesources">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li class="current"><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li>
+            <ul>
+                <li class="current"><a href="#index-multiplesources">The case for decentralization</a></li>
+                <li><a href="#index-multiplesources-federation">Federated Querying</a></li>
+                <li><a href="#index-multiplesources-linktraversal">Link Traversal</a></li>
+            </ul>
+        </li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="query-centralized" class="slide" inlist="" rel="schema:hasPart" resource="#query-centralized">
+        <h2 property="schema:name" style="margin-top: 40px">Common solution to Web querying: Centralization</h2>
+        <img src="img/sparql-centralized.svg" width="35%" style="float: right" />
+		<ul>
+			<li>
+				<h3>First index all data you want to query over</h3>
+				<span class="indent">Querying from a single location is easy</span>
+			</li>
+			<li>
+				<h3>Dataset is collocated with query engine</h3>
+				<span class="indent">All data is assumed to be known beforehand</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="query-centralized-problems" class="slide" inlist="" rel="schema:hasPart" resource="#query-centralized-problems">
+        <h2 property="schema:name" style="margin-top: 40px">Centralization not always possible</h2>
+        <img src="img/solid-pods.svg" width="35%" style="float: right" />
+		<ul>
+			<li>
+				<h3>Private data (Solid)</h3>
+				<span class="indent">Technical and legal reasons</span>
+			</li>
+			<li>
+				<h3>Evolving data</h3>
+				<span class="indent">Requires continuous re-indexing</span>
+			</li>
+			<li>
+				<h3>Web scale data</h3>
+				<span class="indent">Indexing the whole Web is infeasible for most organizations</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="query-decentralized" class="slide" inlist="" rel="schema:hasPart" resource="#sparql-decentralized">
+        <h2 property="schema:name">How to query over <em>decentralized</em> data?</h2>
+        <center><img src="img/sparql-decentralized.svg" width="75%" /></center>
+		<ul>
+			<li>
+				<h3>Data and query engine are <em>not</em> collocated</h3>
+				<span class="indent">Query engine runs on a separate machine</span>
+			</li>
+			<li>
+				<h3>Not just one datasets</h3>
+				<span class="indent">Data is spread over the Web across multiple sources</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="query-decentralized-overview" class="slide" inlist="" rel="schema:hasPart" resource="#sparql-decentralized-overview">
+        <h2 property="schema:name">Approaches for querying over decentralized data</h2>
+		<ul>
+			<li>
+				<h3>Federated Query Processing</h3>
+				<span class="indent">Distributing query execution across <em>known</em> sources</span>
+			</li>
+			<li>
+				<h3>Link Traversal Query Processing</h3>
+				<span class="indent">Local query execution over sources that are <em>discovered</em> by following links</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="index-multiplesources-federation" class="slide index" inlist="" rel="schema:hasPart" resource="#index-multiplesources-federation">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li class="current"><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li>
+            <ul>
+                <li><a href="#index-multiplesources">The case for decentralization</a></li>
+                <li class="current"><a href="#index-multiplesources-federation">Federated Querying</a></li>
+                <li><a href="#index-multiplesources-linktraversal">Link Traversal</a></li>
+            </ul>
+        </li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="federated-overview" class="slide" inlist="" rel="schema:hasPart" resource="#federated-overview">
+        <h2 property="schema:name">Client distributes query over query APIs</h2>
+        <center><img src="img/sparql-federated.svg" width="75%" /></center>
+		<ul>
+			<li>
+				<h3>Clients do limited effort</h3>
+				<span class="indent">Split up the query, distribute it (source selection), and combine results</span>
+			</li>
+			<li>
+				<h3>Servers perform most of the effort</h3>
+				<span class="indent">They actually execute the queries, over potentially huge datasets</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="federated-sparql" class="slide" inlist="" rel="schema:hasPart" resource="#federated-sparql">
+        <h2 property="schema:name">Federation over SPARQL endpoints</h2>
+		<ul>
+			<li>
+				<h3>Servers are SPARQL endpoints (most common)</h3>
+				<span class="indent">They accept any valid SPARQL query</span>
+			</li>
+			<li>
+				<h3>Client-side source selection</h3>
+				<span class="indent">Rewrite query in terms of SERVICE clauses</span>
+			</li>
+		</ul>
+        <div>
+        <pre style="font-size: 0.7em; float: left; margin-right: 15px">SELECT ?drug ?title WHERE {
+  ?drug db:drugCategory dbc:micronutrient.
+  ?drug db:casRegistryNumber ?id.
+  ?keggDrug rdf:type kegg :Drug.
+  ?keggDrug bio2rdf:xRef ?id.
+  ?keggDrug purl:title ?title.
+}
+
+
+</pre>
+        <pre style="font-size: 0.7em">SELECT ?drug ?title WHERE {
+  SERVICE &lt;http://example.com/drb&gt; {
+    ?drug db:drugCategory dbc:micronutrient.
+    ?drug db:casRegistryNumber ?id.
+  }
+  SERVICE &lt;http://example.com/kegg&gt; {
+    ?keggDrug rdf:type kegg :Drug.
+    ?keggDrug bio2rdf:xRef ?id.
+    ?keggDrug purl:title ?title.
+  }
+}</pre>
+    </div>
+    </section>
+    
+    <section id="federated-heterogeneous" class="slide" inlist="" rel="schema:hasPart" resource="#federated-heterogeneous">
+        <h2 property="schema:name">Federation over heterogeneous sources</h2>
+		<ul>
+			<li>
+				<h3>Servers are not only SPARQL endpoints</h3>
+				<span class="indent">Other types of Linked Data Fragments: TPF, WiseKG, brTPF, ...</span><br \>
+                <span class="indent">Different levels of server expressivity</span>
+			</li>
+			<li>
+				<h3>Clients may have to take up more effort</h3>
+				<span class="indent">Executing parts of queries client-side</span>
+			</li>
+			<li>
+				<h3>Trade-off between server and client effort</h3>
+				<span class="indent">Low-cost publishing and preventing server availability issues</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="federated-limitations" class="slide" inlist="" rel="schema:hasPart" resource="#federated-limitations">
+        <h2 property="schema:name">Limitations of federated querying</h2>
+		<ul>
+			<li>
+				<h3>All federation members must be known before execution starts</h3>
+				<span class="indent">Source selection distributes query across list of sources</span><br \>
+                <span class="indent">No discovery of <em>new</em> sources</span>
+			</li>
+			<li>
+				<h3>Limited scalability in terms of number of endpoints</h3>
+				<span class="indent">Current federation techniques scale to the order of 10 sources</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="index-multiplesources-linktraversal" class="slide index" inlist="" rel="schema:hasPart" resource="#index-multiplesources-linktraversal">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li class="current"><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li>
+            <ul>
+                <li><a href="#index-multiplesources">The case for decentralization</a></li>
+                <li><a href="#index-multiplesources-federation">Federated Querying</a></li>
+                <li class="current"><a href="#index-multiplesources-linktraversal">Link Traversal</a></li>
+            </ul>
+        </li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="query-decentralized-links" class="slide" inlist="" rel="schema:hasPart" resource="#sparql-decentralized-links">
+        <h2 property="schema:name">Exploit interlinking of documents</h2>
+        <center><img src="img/sparql-decentralized-links.svg" width="75%" /></center>
+		<ul>
+			<li>
+				<h3>Linked Data documents are linked to each other</h3>
+				<span class="indent">Following the Linked Data principles</span>
+			</li>
+			<li>
+				<h3>Query engine can <em>follow</em> links</h3>
+				<span class="indent">Start from one document, and discover new documents on the fly</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="link-traversal-concept" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-concept" style="text-align: center">
+        <h2 property="schema:name" style="margin-top: 150px">Link Traversal Query Processing</h2>
+        <h3>Querying by following links between documents</h2>
+    </section>
+    
+    <section id="link-traversal-example-query" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-example-query">
+      <h2 property="schema:name">Example: Find Alice's contact names</h2>
+        <img src="img/pods.svg" width="35%" style="float: right" />
+        <pre>SELECT ?name WHERE {
+    &lt;https://alice.pods.org/profile#me&gt;
+        foaf:knows ?person.
+    ?person foaf:name ?name.
+}</pre>
+        <h3>Query process:</h3>
+		<ol>
+			<li>Start from Alice's profile</li>
+            <li>Follow links to profiles of Bob and Carol</li>
+            <li>Query over union of all profiles</li>
+            <li>Find query results: <code>[ { "name": "Bob" }, { "name": "Carol" } ]</code></li>
+		</ol>
+    </section>
+    
+    <section id="link-traversal-process" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-process">
+        <h2 property="schema:name">The Link Traversal Query Process</h2>
+        <em><strong>Link queue</strong>: stores links to documents that need to be fetched</em>
+		<ul>
+			<li>
+                <h3>1. Initialize link queue with <em>seed URLs</em></h3>
+                <span class="indent">Seed URLs can be user-defined, or derived from query</span>
+			</li>
+			<li>
+                <h3>2. Iterate and append link queue</h3>
+                <span class="indent">Iteratively pop head off queue, and follow link to document</span><br /><br />
+                <span class="indent">Add all URLs in document to link queue</span>
+			</li>
+			<li>
+                <h3>3. Execute query</h3>
+                <span class="indent">Over union of all discovered RDF triples</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="link-traversal-difficulties" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-difficulties">
+        <h2 property="schema:name">Difficulties with Link Traversal</h2>
+        <em>But solutions exist!</em>
+		<ul>
+			<li>
+                <h3>Link queue rarely becomes empty</h3>
+                <span class="indent">It grows in size due to massive size of the Web</span><br /><br />
+                <span class="indent">Discovery and Query Processing must be done in parallel</span>
+			</li>
+			<li>
+                <h3>Too many links are followed</h3>
+                <span class="indent">Link filtering strategies are required</span>
+			</li>
+			<li>
+                <h3>Traditional query planning algorithms don't work</h3>
+                <span class="indent">Heuristics or adaptive query planning techniques are needed</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="link-traversal-problems" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-problems">
+        <h2 property="schema:name">Open problems with Link Traversal</h2>
+        <em>No good solutions yet</em>
+		<ul>
+			<li>
+                <h3>Slow query execution for complex queries</h3>
+                <span class="indent">Large number of links and lack of indexing</span>
+			</li>
+			<li>
+                <h3>Query termination for some queries</h3>
+                <span class="indent">Virtually infinite number of links</span>
+			</li>
+			<li>
+                <h3>Security issues in uncontrolled environments</h3>
+                <span class="indent">Possibility of malicious data publishers</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="link-traversal-and-federation" class="slide" inlist="" rel="schema:hasPart" resource="#link-traversal-and-federation">
+        <h2 property="schema:name" style="font-size: 1.8em">The future of querying over decentralized data</h2>
+        <em>(My personal opinion)</em>
+		<ul>
+			<li>
+                <h3>Neither Link Traversal nor Federated Querying will be sufficient</h3>
+                <span class="indent">A combination of both will be needed</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="index-practise" class="slide index" inlist="" rel="schema:hasPart" resource="#index-practise">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li class="current"><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+    
+    <section id="comunica" class="slide" inlist="" rel="schema:hasPart" resource="#comunica">
+        <h2 property="schema:name">The following will make use of Comunica</h2>
+        <center><img src="img/comunica_white_on_red.svg" width="20%" style="float: right" /></center>
+		<ul>
+			<li>
+				<h3>Flexible and Modular Meta-Query Engine</h3>
+				<span class="indent">Building blocks to build engine with specific functionality</span><br \>
+                <span class="indent">Presets like Comunica SPARQL, Comunica SPARQL Solid</span>
+			</li>
+			<li>
+				<h3>Open-source</h3>
+				<span class="indent">Available under the MIT license</span>
+			</li>
+			<li>
+				<h3>Implemented in TypeScript</h3>
+				<span class="indent">Can be used in any JavaScript application or from the command line</span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="comunica-app" class="slide" inlist="" rel="schema:hasPart" resource="#comunica-app">
+        <h2 property="schema:name">💻 Using Comunica in a JS app</h2>
+		<ul>
+			<li>
+				<h3>Querying from a single source</h3>
+				<span class="indent">Using <code>@comunica/query-sparql</code></span>
+			</li>
+			<li>
+				<h3>Federated querying from multiple sources</h3>
+				<span class="indent">Using <code>@comunica/query-sparql</code></span>
+			</li>
+			<li>
+				<h3>Link traversal querying over Solid pods</h3>
+				<span class="indent">Using <code>@comunica/query-sparql-link-traversal-solid</code></span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="comunica-more" class="slide" inlist="" rel="schema:hasPart" resource="#comunica-more">
+        <h2 property="schema:name">Learn more about using Comunica</h2>
+		<ul>
+			<li>
+				<h3><a href="https://github.com/comunica/comunica/tree/master/engines/query-sparql#readme"><code>@comunica/query-sparql</code></a></h3>
+				<span class="indent">From one or multiple sources</span><br \>
+                <span class="indent"><a href="http://query.linkeddatafragments.org/">Try in your browser</a></span>
+			</li>
+			<li>
+				<h3><a href="https://github.com/comunica/comunica-feature-link-traversal/tree/master/engines/query-sparql-link-traversal-solid#readme"><code>@comunica/query-sparql-link-traversal-solid</code></a></h3>
+				<span class="indent">To traverse over one or multiple Solid pods</span><br \>
+                <span class="indent"><a href="https://comunica.github.io/comunica-feature-link-traversal-web-clients/builds/solid-default/">Try in your browser</a></span>
+			</li>
+			<li>
+				<h3>Or anything else</h3>
+				<span class="indent"><a href="https://comunica.dev/">https://comunica.dev/</a></span>
+			</li>
+		</ul>
+    </section>
+    
+    <section id="index-final" class="slide index" inlist="" rel="schema:hasPart" resource="#index-final">
+      <ul>
+        <li><a href="#index-fundamentals">Fundamentals of Query Processing</a></li>
+		<li><a href="#index-multiplesources">Querying over Multiple Sources</a></li>
+        <li><a href="#index-practise">Querying in Practise</a></li>
+      </ul>
+    </section>
+	
+    <section id="conclusion" class="slide" inlist="" rel="schema:hasPart" resource="#conclusion">
+      <h2 property="schema:name" class="big">Conclusions</h2>
+	  <ul>
+	  	<li>
+              <h3>SPARQL querying as abstraction layer</h3>
+              <span class="indent">Read/write Linked Data using simple declarative queries</span>
+	  	</li>
+	  	<li>
+              <h3>Querying over multiple sources</h3>
+              <span class="indent">Federated querying or link traversal</span>
+	  	</li>
+	  	<li>
+              <h3>Comunica</h3>
+              <span class="indent">Open-source TS/JS engine providing abstraction layer</span>
+	  	</li>
+	  </ul>
+    </section>
+
+    <footer>
+      <p class="license">
+            &#169; <span property="schema:copyrightYear">2024</span> <a href="https://www.rubensworks.net" rel="schema:copyrightHolder"><span resource="https://www.rubensworks.net/#me">Ruben Taelman</span></a>
+            — <a rel="license" href="https://creativecommons.org/licenses/by/4.0/" property="schema:license">Creative Commons Attribution 4.0</a>, unless otherwise indicated.
+      </p>
+      <a href="https://github.com/rubensworks/slides-2024-vaia-webquerying">Source</a>
+    </footer>
+
+    <script src="shower/shower.min.js"></script>
+  </body>
+</html>
