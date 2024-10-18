@@ -16,6 +16,16 @@
       .shower {
         --slide-ratio: calc(16 / 9);
       }
+      table.query-results thead tr {
+          border: solid 1px gray;
+      }
+      table.query-results thead td {
+          font-weight: bold;
+          background-color: white;
+      }
+      table.query-results tbody tr {
+          border: solid 1px gray;
+      }
     </style>
   </head>
 
@@ -106,7 +116,7 @@
     
     <section id="query-abstraction" class="slide" inlist="" rel="schema:hasPart" resource="#query-abstraction">
       <h2 property="schema:name">Queries as abstraction layer</h2>
-      <em>SQL, SPARQL, GraphQL, ...</em>
+      <em>SQL, SPARQL, GQL, GraphQL, ...</em>
       <ul>
           <li>
           	  <h3>Say what needs to happen, not how</h3>
@@ -139,7 +149,7 @@
           <li>
           	  <h3>W3C recommendation</h3>
 			  <span class="indent">SPARQL 1.1 (21 March 2013)</span><br \>
-              <span class="indent">SPARQL 1.2 (Upcoming mid-2024)</span>
+              <span class="indent">SPARQL 1.2 (Upcoming mid-2025)</span>
           </li>
           <li>
           	  <h3>Widely adopted</h3>
@@ -752,7 +762,7 @@
 			<li>
 				<h3><a href="https://github.com/comunica/comunica/tree/master/engines/query-sparql#readme"><code>@comunica/query-sparql</code></a></h3>
 				<span class="indent">From one or multiple sources</span><br \>
-                <span class="indent"><a href="http://query.linkeddatafragments.org/">Try in your browser</a></span>
+                <span class="indent"><a href="https://query.comunica.dev/">Try in your browser</a></span>
 			</li>
 			<li>
 				<h3><a href="https://github.com/comunica/comunica-feature-link-traversal/tree/master/engines/query-sparql-link-traversal-solid#readme"><code>@comunica/query-sparql-link-traversal-solid</code></a></h3>
