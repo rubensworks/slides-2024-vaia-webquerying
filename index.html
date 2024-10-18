@@ -391,6 +391,190 @@
       </ul>
     </section>
     
+    <section id="optimization-algebraic" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-algebraic">
+      <h2 property="schema:name">Algebraic optimization</h2>
+      <ul>
+          <li>
+          	  <h3>Data-independent</h3>
+			  <span class="indent">Independent of the underlying dataset</span><br /><br />
+              <span class="indent">Based on heuristics</span>
+          </li>
+          <li>
+          	  <h3>Preserves evaluation semantics</h3>
+			  <span class="indent">Optimized algebra produces same results as executing unoptimized algebra</span>
+          </li>
+          <li>
+          	  <h3>Trade-off between optimization and performance</h3>
+			  <span class="indent">Algebraic optimization can take a lot of time,</span><br />
+              <span class="indent">sometimes even more than execution the sub-optimal algebra.</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="optimization-algebraic-orderby-distinct" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-algebraic-orderby-distinct">
+      <h2 property="schema:name">Example: <code>ORDER BY</code> + <code>DISTINCT</code></h2>
+      <ul>
+          <li>
+			  <span><code>ORDER BY</code>: Sort solution mappings by the given variable</span>
+          </li>
+          <li>
+			  <span><code>DISTINCT</code>: Remove duplicate solution mappings</span>
+          </li>
+          <li>
+			  <span>SPARQL requires <code>DISTINCT</code> to happen <em>after</em> <code>ORDER BY</code></span>
+          </li>
+          <li>
+			  <span>Performance issues when sorting many non-distinct solution mappings</span>
+          </li>
+          <li>
+			  <span>Optimization: Apply <code>DISTINCT</code> before <code>ORDER BY</code></span>
+          </li>
+      </ul>
+          <div style="float: left; width: 400px; height: 400px;">
+              Input:
+              <pre style="font-size: 0.7em">{
+  "type": "distinct",
+  "input": {
+    "type": "orderby",
+    "variable": "x",
+    "input": { ... }
+  }
+}</pre>
+          </div>
+          <div>
+              Output:
+              <pre style="font-size: 0.7em">{
+  "type": "orderby",
+  "variable": "x",
+  "input": {
+    "type": "distinct",
+    "input": { ... }
+  }
+}</pre>
+          </div>
+      </div>
+    </section>
+    
+    <section id="optimization-lowlevel" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel">
+      <h2 property="schema:name">Low-level optimization</h2>
+      <ul>
+          <li>
+          	  <h3>Data-dependent</h3>
+			  <span class="indent">Based on the underlying dataset, statistics, and derived indexes.</span>
+          </li>
+          <li>
+          	  <h3>Minimize computational complexity</h3>
+			  <span class="indent">Reduce the number of intermediary results.</span>
+          </li>
+          <li>
+          	  <h3>Select and configure specific algorithms of algebra operators</h3>
+			  <span class="indent">Different algorithms behave better in certain situations.</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="optimization-lowlevel-joinorder" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel-joinorder">
+      <h2 property="schema:name">Example: joining in BGPs</h2>
+      <h3>How, and in what order should triple patterns be evaluated?</h3>
+      <p>
+          1. <code>?person a dbpedia-owl:Artist.</code>
+      </p>
+      <p>
+          2. <code>?person rdfs:label ?name.</code>
+      </p>
+      <p>
+          3. <code>?person dbpedia-owl:birthPlace ?birthPlace.</code>
+      </p>
+    </section>
+    
+    <section id="optimization-lowlevel-joinorder-factors" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel-factors">
+      <h2 property="schema:name">Different factors influence join order</h2>
+      <ul>
+          <li>
+          	  <h3>Cardinality of each pattern</h3>
+              <span class="indent">Can be exact, or an estimate</span>
+          </li>
+          <li>
+          	  <h3>Complexity of join algorithms</h3>
+              <span class="indent">Based on cardinalities of patterns</span>
+          </li>
+          <li>
+          	  <h3>Precomputing steps of join algorithms</h3>
+              <span class="indent">Precomputation may be too expensive for low cardinalities</span>
+          </li>
+          <li>
+          	  <h3>Restrictions of join algorithms</h3>
+              <span class="indent">Some algorithms only work in certain cases</span>
+          </li>
+          <!--<li>
+          	  <h3>Join cardinality statistics of patterns</h3>
+              <span class="indent">Statistics on intermediate results when joining two patterns</span><br />
+              <span class="indent"><em>Difficult to store and manage!</em></span>
+          </li>-->
+      </ul>
+    </section>
+    
+    <section id="optimization-lowlevel-joinorder-cardinality" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel-cardinality">
+      <h2 property="schema:name">Obtain cardinality of each pattern</h2>
+      <p>
+          1. <code>?person a dbpedia-owl:Artist.</code>
+          <span style="font-weight: bold; float: right">200</span>
+      </p>
+      <p>
+          2. <code>?person rdfs:label ?name.</code>
+          <span style="font-weight: bold; float: right">10.000</span>
+      </p>
+      <p>
+          3. <code>?person dbpedia-owl:birthPlace ?birthPlace.</code>
+          <span style="font-weight: bold; float: right">1.000</span>
+      </p>
+      <h3>Can be pre-computed, or estimated at runtime.</h3>
+    </section>
+    
+    <section id="optimization-lowlevel-joinorder-algorithms" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel-algorithms" style="font-size: 0.85em">
+      <h2 property="schema:name">Select appropriate join algorithms</h2>
+      <em>Usually happens in pairs of two operators (<code>n</code>, <code>m</code>)</em>
+      <ul>
+          <li>
+          	  <h3>Nested-loop join</h3>
+			  <span class="indent">Double for-loop &rarr; <code>O(n*m)</code></span><br />
+              <span class="indent">Works well for small sequences due to the lack of preprocessing.</span>
+          </li>
+          <li>
+          	  <h3>Hash join</h3>
+			  <span class="indent">Precomputes hash tables for all mappings in one solution sequence.</span><br />
+              <span class="indent">Iterates over other solution sequence with lookups to hash table &rarr; <code>O(n+m)</code></span><br />
+              <span class="indent">Not possible with <code>OPTIONAL</code></span>
+          </li>
+          <li>
+          	  <h3>Sort-merge join</h3>
+			  <span class="indent">Sort solution sequences.</span><br />
+              <span class="indent">Iterates over both solution sequences in order &rarr; <code>O(n+m)</code></span><br />
+              <span class="indent">Sorting can become expensive with larger solution sequences</span>
+          </li>
+      </ul>
+    </section>
+    
+    <section id="optimization-lowlevel-joinorder-order" class="slide" inlist="" rel="schema:hasPart" resource="#optimization-lowlevel-order" style="font-size: 0.9em">
+      <h2 property="schema:name">Join orders and algorithms influence worst-case complexity</h2>
+      <ul>
+          <li>
+          	  <h3>All nested-loop join</h3>
+              <span class="indent"><code>((1 ⋈ 2) ⋈ 3) = ((200 * 10.000) * 1.000) = 2.000.000.000</code></span>
+          </li>
+          <li>
+          	  <h3>All hash join</h3>
+              <span class="indent"><code>((1 ⋈ 2) ⋈ 3) = ((200 + 10.000) + 1.000) = 11.200</code></span>
+          </li>
+          <li>
+          	  <h3>Nested-loop join and hash join</h3>
+              <span class="indent"><code>((1 ⋈ 3) ⋈ 2) = ((200 * 1.000) + 10.000) = 210.000</code></span>
+          </li>
+      </ul>
+      <p>&rarr; Restrictions and preprocessing steps (sorting, hashing, ...) not yet taken into account</p>
+      <p>&rarr; Trade-off between different factors that influence join order</p>
+    </section>
+    
     <section id="evaluation-steps" class="slide" inlist="" rel="schema:hasPart" resource="#evaluation-steps">
       <h2 property="schema:name">3. Evaluation: executing the plan</h2>
       <ul>
